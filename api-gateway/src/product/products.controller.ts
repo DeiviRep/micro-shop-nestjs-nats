@@ -16,7 +16,8 @@ export class ProductsController extends AbstractController{
   @Roles('admin')
   async createProduct(@Body() body: { name: string; price: number}, @Req() req: any) {
     const userId = this.getUser(req)
-    return this.productsService.createProduct(body.name, body.price, userId);
+    const result = await this.productsService.createProduct(body.name, body.price, userId);
+    return this.successCreate(result);
   }
 
   @Get(':id')
@@ -24,6 +25,7 @@ export class ProductsController extends AbstractController{
   @Roles('admin', 'user')
   async getProductsByUser(@Param('id') userId: string, @Req() req: any) {
     this.getUser(req)
-    return this.productsService.getProductsByUser(userId);
+    const result = await this.productsService.getProductsByUser(userId);
+    return this.successList(result);
   }
 }
