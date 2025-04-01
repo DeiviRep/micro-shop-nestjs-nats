@@ -18,11 +18,7 @@ export class ProductsController extends AbstractController{
 
   @Get(':id')
   @UseGuards(AuthGuard('jwt'))
-  async getProductsByUser(@Param('id') userId: string, @Req() req: any) {
-    const currentUser = req.user;
-    if (currentUser.role === 'user' && currentUser.id !== userId) {
-        throw new ForbiddenException('You can only see your own products');
-    }
+  async getProductsByUser(@Param('id') userId: string) {
     return this.productsService.getProductsByUser(userId);
   }
 }

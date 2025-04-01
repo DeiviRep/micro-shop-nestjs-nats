@@ -1,7 +1,7 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ClientProxy } from '@nestjs/microservices';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { Product } from '../entity/product.entity';
 import { Messages } from '../common/constants/response-messages';
@@ -14,26 +14,33 @@ export class ProductsService {
     @Inject('USER_SERVICE') private userClient: ClientProxy,
   ) {}
 
-  async createProduct(name: string, price: number, userId: string): Promise<Product> {
-    const user = await firstValueFrom(
-      this.userClient.send('FIND_USER_BY_ID', { id: userId }),
-    );
-    if (!user) {
-      throw new NotFoundException(Messages.EXCEPTION_NOT_FOUND)
+  async createProduct(name: string, price: number, userId: string) {
+    try {
+      const user = await firstValueFrom(
+        this.userClient.send('FIND_USER_BY_ID', { id: userId }),
+      );
+      if (!user) {
+        throw new RpcException({ statusCode: 404, message: Messages.EXCEPTION_NOT_FOUND });
+      }
+      const product = this.productRepository.create({ name, price, userId });
+      return this.productRepository.save(product);
+    } catch (error) {
+      throw new RpcException({ statusCode: 500, message: Messages.EXCEPTION_INTERNAL_SERVER_ERROR});
     }
-
-    const product = this.productRepository.create({ name, price, userId });
-    return this.productRepository.save(product);
   }
 
-  async getProductsByUser(userId: string): Promise<Product[]> {
-    const user = await firstValueFrom(
-      this.userClient.send('FIND_USER_BY_ID', { id: userId }),
-    );
-    if (!user) {
-      throw new NotFoundException(Messages.EXCEPTION_NOT_FOUND)
+  async getProductsByUser(userId: string) {
+    try {
+      const user = await firstValueFrom(
+        this.userClient.send('FIND_USER_BY_ID', { id: userId }),
+      );
+      if (!user) {
+        throw new RpcException({ statusCode: 404, message: Messages.EXCEPTION_NOT_FOUND });
+      }
+  
+      return this.productRepository.find({ where: { userId } });
+    } catch (error) {
+      throw new RpcException({ statusCode: 500, message: Messages.EXCEPTION_INTERNAL_SERVER_ERROR});
     }
-
-    return this.productRepository.find({ where: { userId } });
   }
 }

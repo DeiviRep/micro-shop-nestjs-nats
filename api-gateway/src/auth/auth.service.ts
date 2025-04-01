@@ -1,17 +1,9 @@
 // src/auth/auth.service.ts
-import { Injectable, Inject, NotFoundException, BadRequestException, HttpException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException, HttpException, UnauthorizedException } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { firstValueFrom } from 'rxjs';
-
-// Define el tipo de User esperado desde users-service
-interface User {
-  id: string;
-  email: string;
-  password: string;
-  role: string;
-}
 
 @Injectable()
 export class AuthService {
@@ -21,30 +13,22 @@ export class AuthService {
   ) {}
 
   async register(email: string, password: string, role: string) {
-    try {
-      const userResponse = await firstValueFrom(this.userClient.send('CREATE_USER', { email, password, role }));
-      const token = this.jwtService.sign({ id: userResponse.id, role: userResponse.role });
-      return { access_token: token };
-    } catch (error) {
-      throw new BadRequestException(error)
-    }
-  }
+    const userResponse = await firstValueFrom(this.userClient.send('CREATE_USER', { email, password, role }));
+    const token = this.jwtService.sign({ id: userResponse.id, role: userResponse.role });
+    return { access_token: token };
+  }  
 
   async login(email: string, password: string) {
-    try {
-      const user = await firstValueFrom(this.userClient.send('GET_USER_BY_EMAIL', email));
+      const user = await firstValueFrom(this.userClient.send('GET_USER_BY_EMAIL_WITH_PASSWORD', email));
       if (!user) {
-          throw new Error('User not found');
+        throw new NotFoundException('test error User not found');
       }
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-          throw new Error('Invalid password');
+        throw new UnauthorizedException('Invalid password');
       }
-      if (!user) throw new NotFoundException(user);
+
       const token = this.jwtService.sign({ id: user.id, role: user.role });
       return { access_token: token };
-    } catch (error) {
-        throw new NotFoundException(error)
-    }
   }
 }
