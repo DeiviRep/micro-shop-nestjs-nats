@@ -9,7 +9,7 @@ import { UserRole } from '../constant';
 import { IsEmail, IsEnum } from 'class-validator';
 
 dotenv.config()
-@Entity({ name: 'users', schema: process.env.DB_SCHEMA_SHOPS })
+@Entity({ name: 'users', schema: process.env.DB_SCHEMA_USERS })
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;

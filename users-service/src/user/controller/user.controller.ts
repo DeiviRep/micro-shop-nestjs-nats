@@ -16,4 +16,14 @@ export class UserController {
   async findUserById(data: { id: string }) {
     return this.userService.findUserById(data.id);
   }
+
+  @MessagePattern('FIND_USER_BY_EMAIL')
+    async findUserByEmail(email: string) {
+        return await this.userService.findUserByEmail(email);
+  }
+
+  @MessagePattern('GET_USER_BY_EMAIL_WITH_PASSWORD')
+  async getUserByEmailWithPassword(email: string) {
+      return await this.userService.findUserByEmailWithPassword(email);
+  }
 }
