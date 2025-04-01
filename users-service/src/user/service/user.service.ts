@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 import { UserRole } from '../constant';
 import { User } from '../entity/user.entity';
 import { RpcException } from '@nestjs/microservices';
+import { CreateUserDto } from '../dto/create-user.dto';
 
 @Injectable()
 export class UserService {
@@ -14,16 +15,19 @@ export class UserService {
     private userRepository: Repository<User>,
   ) {}
 
-  async createUser(email: string, password: string, role: UserRole = UserRole.USER) {
+  async createUser(dataDto: CreateUserDto) {
     try {
-      const existingUser = await this.userRepository.findOne({ where: { email } });
+      const existingUser = await this.userRepository.findOne({ where: { email: dataDto.email } });
       if (existingUser) {
         throw new RpcException({ statusCode: 400, message: Messages.EXISTING_EMAIL });
       }
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const user = this.userRepository.create({ email, password: hashedPassword, role });
+      const hashedPassword = await bcrypt.hash(dataDto.password, 10);
+      const user = this.userRepository.create({ email: dataDto.email, password: hashedPassword, role: dataDto.role || UserRole.USER });
       return this.userRepository.save(user);
     } catch (error) {
+      if (error instanceof RpcException) {
+        throw error;
+      }
       throw new RpcException({ statusCode: 500, message: Messages.EXCEPTION_INTERNAL_SERVER_ERROR});
     }
   }
@@ -37,6 +41,9 @@ export class UserService {
       return user;
       
     } catch (error) {
+      if (error instanceof RpcException) {
+        throw error;
+      }
       throw new RpcException({ statusCode: 500, message: Messages.EXCEPTION_INTERNAL_SERVER_ERROR});
     }
   }
@@ -49,6 +56,9 @@ export class UserService {
       }
       return user;
     } catch (error) {
+      if (error instanceof RpcException) {
+        throw error;
+      }
       throw new RpcException({ statusCode: 500, message: Messages.EXCEPTION_INTERNAL_SERVER_ERROR});
     }
   }
@@ -61,6 +71,9 @@ export class UserService {
       }
       return user;
     } catch (error) {
+      if (error instanceof RpcException) {
+        throw error;
+      }
       throw new RpcException({ statusCode: 500, message: Messages.EXCEPTION_INTERNAL_SERVER_ERROR});
     }
   }

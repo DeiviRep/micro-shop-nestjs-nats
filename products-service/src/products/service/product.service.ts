@@ -5,6 +5,7 @@ import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { Product } from '../entity/product.entity';
 import { Messages } from '../common/constants/response-messages';
+import { CreateProductDto } from '../dto/create-product.dto';
 
 @Injectable()
 export class ProductsService {
@@ -14,7 +15,8 @@ export class ProductsService {
     @Inject('USER_SERVICE') private userClient: ClientProxy,
   ) {}
 
-  async createProduct(name: string, price: number, userId: string) {
+  async createProduct(dataDto: CreateProductDto) {
+    const { name, price, userId} = dataDto;
     try {
       const user = await firstValueFrom(
         this.userClient.send('FIND_USER_BY_ID', { id: userId }),
@@ -25,6 +27,9 @@ export class ProductsService {
       const product = this.productRepository.create({ name, price, userId });
       return this.productRepository.save(product);
     } catch (error) {
+      if (error instanceof RpcException) {
+        throw error;
+      }
       throw new RpcException({ statusCode: 500, message: Messages.EXCEPTION_INTERNAL_SERVER_ERROR});
     }
   }
@@ -40,6 +45,9 @@ export class ProductsService {
   
       return this.productRepository.find({ where: { userId } });
     } catch (error) {
+      if (error instanceof RpcException) {
+        throw error;
+      }
       throw new RpcException({ statusCode: 500, message: Messages.EXCEPTION_INTERNAL_SERVER_ERROR});
     }
   }

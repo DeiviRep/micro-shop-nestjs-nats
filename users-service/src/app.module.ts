@@ -17,9 +17,11 @@ import { UserModule } from './user/user.module';
         port: configService.get<number>('DB_PORT', 5432),
         username: configService.get<string>('DB_USERNAME', 'postgres'),
         password: configService.get<string>('DB_PASSWORD', 'postgres'),
-        database: configService.get<string>('DB_DATABASE', 'shop_db'),
+        database: configService.get<string>('DB_DATABASE', 'users_db'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: true,
+        logging: configService.get<boolean>('LOG_SQL', false) ? ['query', 'error'] : false,
+        logger: 'advanced-console'
       }),
       inject: [ConfigService],
     }),
