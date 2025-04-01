@@ -7,7 +7,7 @@ import {
 } from 'typeorm';
 
 dotenv.config()
-@Entity({ name: 'products', schema: process.env.DB_SCHEMA_SHOPS })
+@Entity({ name: 'products', schema: process.env.DB_SCHEMA_PRODUCTS })
 export class Product {
   @PrimaryGeneratedColumn('uuid')
   @IsUUID()

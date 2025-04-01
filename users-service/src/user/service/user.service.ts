@@ -1,10 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { User } from '../entity/user.entity';
-import { UserRole } from '../constant';
 import { Messages } from 'src/common/constants/response-messages';
+import { Repository } from 'typeorm';
+import { UserRole } from '../constant';
+import { User } from '../entity/user.entity';
+import { RpcException } from '@nestjs/microservices';
+import { CreateUserDto } from '../dto/create-user.dto';
 
 @Injectable()
 export class UserService {
@@ -13,29 +15,66 @@ export class UserService {
     private userRepository: Repository<User>,
   ) {}
 
-  async createUser(email: string, password: string, role: UserRole = UserRole.USER): Promise<User> {
-    const existingUser = await this.userRepository.findOne({ where: { email } });
-    if (existingUser) {
-      throw new NotFoundException(Messages.EXISTING_EMAIL)
+  async createUser(dataDto: CreateUserDto) {
+    try {
+      const existingUser = await this.userRepository.findOne({ where: { email: dataDto.email } });
+      if (existingUser) {
+        throw new RpcException({ statusCode: 400, message: Messages.EXISTING_EMAIL });
+      }
+      const hashedPassword = await bcrypt.hash(dataDto.password, 10);
+      const user = this.userRepository.create({ email: dataDto.email, password: hashedPassword, role: dataDto.role || UserRole.USER });
+      return this.userRepository.save(user);
+    } catch (error) {
+      if (error instanceof RpcException) {
+        throw error;
+      }
+      throw new RpcException({ statusCode: 500, message: Messages.EXCEPTION_INTERNAL_SERVER_ERROR});
     }
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = this.userRepository.create({ email, password: hashedPassword, role });
-    return this.userRepository.save(user);
   }
 
-  async findUserById(id: string): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { id: id } });
-    if (!user) {
-      throw new NotFoundException(Messages.EXCEPTION_NOT_FOUND)
-    }
-    return user;
-  }
-
-  async validateUser(email: string, password: string): Promise<User | null> {
-    const user = await this.userRepository.findOne({ where: { email } });
-    if (user && await bcrypt.compare(password, user.password)) {
+  async findUserById(id: string) {
+    try {
+      const user = await this.userRepository.findOne({ where: { id: id } });
+      if (!user) {
+        throw new RpcException({ statusCode: 404, message: Messages.EXCEPTION_NOT_FOUND });
+      }
       return user;
+      
+    } catch (error) {
+      if (error instanceof RpcException) {
+        throw error;
+      }
+      throw new RpcException({ statusCode: 500, message: Messages.EXCEPTION_INTERNAL_SERVER_ERROR});
     }
-    return null;
+  }
+
+  async findUserByEmail(email: string) {
+    try {
+      const user = await this.userRepository.findOne({ where: { email } });
+      if (!user) {
+        throw new RpcException({ statusCode: 404, message: Messages.EXCEPTION_NOT_FOUND });
+      }
+      return user;
+    } catch (error) {
+      if (error instanceof RpcException) {
+        throw error;
+      }
+      throw new RpcException({ statusCode: 500, message: Messages.EXCEPTION_INTERNAL_SERVER_ERROR});
+    }
+  }
+
+  async findUserByEmailWithPassword(email: string) {
+    try {
+      const user = await this.userRepository.findOne({ where: { email }, select: ['id', 'email', 'password', 'role'] });
+      if (!user) {
+        throw new RpcException({ statusCode: 404, message: Messages.EXCEPTION_NOT_FOUND });
+      }
+      return user;
+    } catch (error) {
+      if (error instanceof RpcException) {
+        throw error;
+      }
+      throw new RpcException({ statusCode: 500, message: Messages.EXCEPTION_INTERNAL_SERVER_ERROR});
+    }
   }
 }
