@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  nats:
+    image: nats:latest
+    ports:
+      - "4222:4222"
+    networks:
+      - app-network
+
+  postgres-users:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: users_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-users-data:/var/lib/postgresql/data
+      - ./init-users-db.sql:/docker-entrypoint-initdb.d/init-users-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  postgres-products:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: products_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-products-data:/var/lib/postgresql/data
+      - ./init-products-db.sql:/docker-entrypoint-initdb.d/init-products-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  users-service:
+    build: ./users-service
+    depends_on:
+      postgres-users:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    environment:
+      - DB_HOST=postgres-users
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_DATABASE=users_db
+      - DB_SCHEMA_USERS=users
+      - NATS_URL=nats://nats:4222
+      - LOG_SQL=true
+    networks:
+      - app-network
+
+  products-service:
+    build: ./products-service
+    depends_on:
+      postgres-products:
+        condition: service_healthy
+      nats:
+        condition: service_started
+      users-service:
+        condition: service_started
+    environment:
+      - DB_HOST=postgres-products
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_DATABASE=products_db
+      - DB_SCHEMA_PRODUCTS=products
+      - NATS_URL=nats://nats:4222
+      - LOG_SQL=true
+    networks:
+      - app-network
+
+  api-gateway:
+    build: ./api-gateway
+    depends_on:
+      - nats
+      - users-service
+      - products-service
+    ports:
+      - "3000:3000"
+    environment:
+      - NATS_URL=nats://nats:4222
+      - JWT_SECRET=x7k9pLmNq2rT5vW8yB3zA6cD9fG4jH
+      - JWT_EXPIRES_IN=1h
+    networks:
+      - app-network
+
+volumes:
+  postgres-users-data:
+  postgres-products-data:
+
+networks:
+  app-network:
+    driver: bridge

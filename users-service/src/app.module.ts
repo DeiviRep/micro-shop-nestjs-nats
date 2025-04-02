@@ -18,6 +18,7 @@ import { UserModule } from './user/user.module';
         username: configService.get<string>('DB_USERNAME', 'postgres'),
         password: configService.get<string>('DB_PASSWORD', 'postgres'),
         database: configService.get<string>('DB_DATABASE', 'users_db'),
+        schema: configService.get<string>('DB_SCHEMA_USERS', 'users'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: true,
         logging: configService.get<boolean>('LOG_SQL', false) ? ['query', 'error'] : false,
